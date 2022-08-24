@@ -4,6 +4,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 
 import time
 import random
@@ -14,13 +17,9 @@ import re
 import requests
 
 options = webdriver.ChromeOptions()
-# options.add_argument("--headless")
+
 options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36")
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
-
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 
 
 def register(mail, password):
@@ -39,80 +38,61 @@ def register(mail, password):
 
     driver.get(url=url)
 
-    firstname = driver.find_element(By.ID, "signup-firstname")
+    firstname = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-firstname")))
     firstname.send_keys(name)
-    
-    lastname = driver.find_element(By.ID, "signup-lastname")
+
+    lastname = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-lastname")))
     lastname.send_keys(surname)
 
-    email_register = driver.find_element(By.ID, "signup-email")
+    email_register = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-email")))
     email_register.send_keys(mail)
 
-    password_register = driver.find_element(By.ID, "signup-password")
+    password_register = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-password")))
     password_register.send_keys(password)
 
-    password_confirm = driver.find_element(By.ID, "signup-confirm-password")
+    password_confirm = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-confirm-password")))
     password_confirm.send_keys(password)
 
     WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "signup-submit-button"))).click()
 
+    try:
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "resend-verification-email-btn")))
+    except:
+        pass
+
+
+
+def check_exists_by_path(path):
+    try:
+        driver.find_element(By.ID, path)
+    except NoSuchElementException:
+        return False
+    return True
+
+def login(mail, mailPassword, password):
+
     print("Аккаунт зарегистрирован")
-
-    time.sleep(1)
-
-def login(mail, password):
-
-    options.page_load_strategy = 'eager'
 
     url = "https://www.rev.ai/auth/login"
 
     driver.get(url=url)
 
+    print("Подтверждение почты...")
+
+    WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "login-email")))
+
     email_login = driver.find_element(By.ID, "login-email")
+    email_login = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "login-email")))
     email_login.send_keys(mail)
 
     password_login = driver.find_element(By.ID, "login-password")
     password_login.send_keys(password)
 
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "login-submit-button"))).click()
-
-    print("Выполнен вход")
-
-    time.sleep(2)
-        
-    driver.get(url="https://www.rev.ai/access-token")
-
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "access-token-generate-btn"))).click()
-
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "account-generate-token-btn"))).click()
-        
-    token = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "/html[@class='h-100']/body[@id='access-token-page']/div[@id='site-content']/div[@id='dashboard-content']/div[@class='pa4 mt3-ns w-100 mw7 f6']/div[@id='developer-settings']/div/div[2]/div[@class='regenerated-access-token']/div[@class='flex flex-column flex-row-l pt3']/div[@class='fs-exclude flex flex-column flex-row-l w-100 tl tr-l']/div[@class='access-token displayed w-100 ph2 pb2 br2 pointer']"))).text
-
-    print("Токен получен")
-
-    data = mail + ':' + password + ":" + token
-
-    file = open("result.txt", "a")
-    file.write(data + "\n")
-    file.close()
-    
-    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html[@class='h-100']/body[@id='access-token-page']/div[@id='site-content']/div[@id='dashboard-sidebar']/div[2]/div[@id='dashboard-sidebar-logout']/span[@class='dark-gray text-link pl2']"))).click()
-
-    print("Выход с аккаунта")
-
-    time.sleep(1)
-
-
-def mail_confirm(email, password):
-    
-    print("Подтверждение почты...")
-
-    time.sleep(5)
-
-    email = email
-    password = password
+    email = mail
+    password = mailPassword
 
     try:
+        time.sleep(1)
         mail = imaplib.IMAP4_SSL('imap.rambler.ru')
         mail.login(email, password)
         mail.list()
@@ -147,6 +127,36 @@ def mail_confirm(email, password):
 
         print("Ошибка на стороне почты")
 
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "login-submit-button"))).click()
+
+    print("Выполнен вход")
+
+    time.sleep(2)
+        
+    driver.get(url="https://www.rev.ai/access-token")
+
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "access-token-generate-btn"))).click()
+
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, "account-generate-token-btn"))).click()
+        
+    token = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "/html[@class='h-100']/body[@id='access-token-page']/div[@id='site-content']/div[@id='dashboard-content']/div[@class='pa4 mt3-ns w-100 mw7 f6']/div[@id='developer-settings']/div/div[2]/div[@class='regenerated-access-token']/div[@class='flex flex-column flex-row-l pt3']/div[@class='fs-exclude flex flex-column flex-row-l w-100 tl tr-l']/div[@class='access-token displayed w-100 ph2 pb2 br2 pointer']"))).text
+
+    print("Токен получен")
+
+    user_info = email + ':' + password + ":" + token
+
+    file = open("result.txt", "a")
+    file.write(user_info + "\n")
+    file.close()
+    
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.XPATH, "/html[@class='h-100']/body[@id='access-token-page']/div[@id='site-content']/div[@id='dashboard-sidebar']/div[2]/div[@id='dashboard-sidebar-logout']/span[@class='dark-gray text-link pl2']"))).click()
+
+    print("Выход с аккаунта")
+
+    try:
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.ID, "signup-firstname")))
+    except:
+        pass
 
 def start():
     with open('data.txt') as file:
@@ -158,8 +168,14 @@ def start():
             pas = pas + random.choice(list('1234567890abcdefghigklmnopqrstuvyxwzABCDEFGHIGKLMNOPQRSTUVYXWZ'))
         mail,password = line.split(':')
         register(mail, pas)
-        mail_confirm(mail,password)
-        login(mail,pas)
+
+        if check_exists_by_path("resend-verification-email-btn"):
+            login(mail, password, pas)
+            continue
+        else:
+            print("Требуется капча. Установлена задержка")
+            time.sleep(1800)
+            register(mail, pas)
 
 if __name__ == "__main__":
     start()
